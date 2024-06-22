@@ -1,0 +1,190 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+
+class MilkTeaOrderingSystem extends JFrame {
+    private JPanel menuPanel;
+    private JPanel receiptPanel;
+    private JButton calculateButton;
+    private JLabel totalLabel;
+    private JTextArea receiptTextArea;
+
+    private Map<String, Map<String, Double>> milkTeaMenu;
+    private Map<JCheckBox, JComboBox<String>> selectedItems;
+    private Map<String, Double> addOns;
+    private Map<JCheckBox, Double> selectedAddOns;
+
+    private static final String SHOP_NAME = "Flavored Tea Hub";
+    private static final String[] SIZES = {"Small", "Medium", "Large"};
+    private static final Map<String, Double> SIZE_MULTIPLIERS;
+
+    static {
+        SIZE_MULTIPLIERS = new HashMap<>();
+        SIZE_MULTIPLIERS.put("Small", 1.0);
+        SIZE_MULTIPLIERS.put("Medium", 1.4);
+        SIZE_MULTIPLIERS.put("Large", 1.7);
+    }
+
+    public MilkTeaOrderingSystem() {
+        setTitle("Milk Tea Ordering System");
+        setSize(650, 500);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        initializeMenu();
+        initializeAddOns();
+        initializeUI();
+    }
+
+    private void initializeMenu() {
+        milkTeaMenu = new HashMap<>();
+        milkTeaMenu.put("Classic Milk Tea", createPriceMap(29));
+        milkTeaMenu.put("Taro Milk Tea", createPriceMap(29));
+        milkTeaMenu.put("Matcha Milk Tea", createPriceMap(29));
+        milkTeaMenu.put("Wintermelon Milk Tea", createPriceMap(29));
+        milkTeaMenu.put("Dark Chocolate Milk Tea", createPriceMap(29));
+
+        selectedItems = new HashMap<>();
+    }
+
+    private void initializeAddOns() {
+        addOns = new HashMap<>();
+        addOns.put("Pearl", 10.);
+        addOns.put("Nata", 10.);
+        addOns.put("Pudding", 10.);
+        addOns.put("Grass Jelly", 10.);
+
+        selectedAddOns = new HashMap<>();
+    }
+
+    private Map<String, Double> createPriceMap(double basePrice) {
+        Map<String, Double> priceMap = new HashMap<>();
+        for (String size : SIZES) {
+            priceMap.put(size, basePrice * SIZE_MULTIPLIERS.get(size));
+        }
+        return priceMap;
+    }
+
+    private void initializeUI() {
+        menuPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        menuPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Add some padding
+
+
+        JLabel menuTitle = new JLabel("Milk Tea Menu");
+        menuTitle.setFont(new Font("Arial", Font.BOLD, 14));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridwidth = 2;
+        menuPanel.add(menuTitle, gbc);
+
+        int row = 1;
+
+        for (Map.Entry<String, Map<String, Double>> entry : milkTeaMenu.entrySet()) {
+            JCheckBox checkBox = new JCheckBox(entry.getKey());
+            JComboBox<String> sizeComboBox = new JComboBox<>(SIZES);
+            gbc.gridwidth = 1;
+            gbc.gridx = 0;
+            gbc.gridy = row;
+            menuPanel.add(checkBox, gbc);
+
+            gbc.gridx = 1;
+            menuPanel.add(sizeComboBox, gbc);
+
+            selectedItems.put(checkBox, sizeComboBox);
+            row++;
+        }
+
+        gbc.gridwidth = 2;
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        menuPanel.add(new JLabel("Add-Ons:"), gbc);
+        row++;
+
+
+        for (Map.Entry<String, Double> entry : addOns.entrySet()) {
+            JCheckBox checkBox = new JCheckBox(entry.getKey() + " (" + entry.getValue() + ")");
+            gbc.gridwidth = 2;
+            gbc.gridx = 0;
+            gbc.gridy = row;
+            menuPanel.add(checkBox, gbc);
+            selectedAddOns.put(checkBox, entry.getValue());
+            row++;
+        }
+
+        calculateButton = new JButton("Calculate Total");
+        calculateButton.addActionListener(new CalculateButtonListener());
+        gbc.gridwidth = 2;
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        menuPanel.add(Box.createRigidArea(new Dimension(0, 10)), gbc); // Add space before the button
+        gbc.gridy = row + 1;
+        menuPanel.add(calculateButton, gbc);
+
+
+        receiptPanel = new JPanel();
+        receiptPanel.setLayout(new BoxLayout(receiptPanel, BoxLayout.Y_AXIS));
+        receiptPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        totalLabel = new JLabel("Total: ");
+        receiptTextArea = new JTextArea(20, 30);
+        receiptTextArea.setEditable(false);
+
+        receiptPanel.add(totalLabel);
+        receiptPanel.add(new JScrollPane(receiptTextArea));
+
+        JSplitPane splitPane = new JSplitPane
+                (JSplitPane.HORIZONTAL_SPLIT, menuPanel, receiptPanel);
+        splitPane.setDividerLocation(350);
+        add(splitPane, BorderLayout.CENTER);
+
+    }
+
+    private class CalculateButtonListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            double total = 0.0;
+            StringBuilder receipt = new StringBuilder();
+
+            receipt.append("Shop: ").append(SHOP_NAME).append("\n");
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            receipt.append("Date: ").append(now.format(formatter)).append("\n\n");
+            receipt.append("Items:\n");
+
+            for (Map.Entry<JCheckBox, JComboBox<String>> entry : selectedItems.entrySet()) {
+                if (entry.getKey().isSelected()) {
+                    String size = (String) entry.getValue().getSelectedItem();
+                    double price = milkTeaMenu.get(entry.getKey().getText()).get(size);
+                    receipt.append(entry.getKey().getText()).append(" (").append(size).append(") - $").append(String.format("%.2f", price)).append("\n");
+                    total += price;
+                }
+            }
+
+            receipt.append("\nAdd-Ons:\n");
+            for (Map.Entry<JCheckBox, Double> entry : selectedAddOns.entrySet()) {
+                if (entry.getKey().isSelected()) {
+                    receipt.append(entry.getKey().getText()).append("\n");
+                    total += entry.getValue();
+                }
+            }
+
+            receipt.append("\nTotal: ").append(String.format("%.2f", total));
+            totalLabel.setText("Total: " + String.format("%.2f", total));
+            receiptTextArea.setText(receipt.toString());
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            MilkTeaOrderingSystem frame = new MilkTeaOrderingSystem();
+            frame.setVisible(true);
+        });
+    }
+}
